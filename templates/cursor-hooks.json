@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "~/.cc-notify/bin/smart-notify.sh '✅ Cursor完成' '任务已结束' 'normal'"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "match": ".*",
+        "command": "~/.cc-notify/bin/smart-notify.sh '✅ 命令完成' 'Shell命令执行完毕' 'low'"
+      }
+    ]
+  }
+}

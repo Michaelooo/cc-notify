@@ -1,0 +1,56 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh '⚠️ 需要确认' 'OpenCode 需要您的选择' 'high'"
+          }
+        ]
+      },
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh '⏸️ 等待输入' 'OpenCode 正在等待您提供信息' 'high'"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh '❌ 执行失败' '命令执行出错，请查看终端' 'high'"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh '🎉 全部完成' 'OpenCode 已完成所有任务' 'normal'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh '✅ 任务完成' '对话已结束' 'low'",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
