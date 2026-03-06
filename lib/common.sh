@@ -168,13 +168,14 @@ select_multiple_gum() {
 # 纯 bash 多选界面（简化版，更好的兼容性）
 # 参数：prompt, item1:description1, item2:description2, ...
 # 返回：选中的项目名称（换行分隔）
+# 纯 bash 多选界面（数字选择，最大兼容性）
+# 参数：prompt, item1:description1, item2:description2, ...
+# 返回：选中的项目名称（换行分隔）
 select_multiple_bash() {
     local prompt="$1"
     shift
     local items=("$@")
 
-    local selected=()
-    local current=0
     local total=${#items[@]}
 
     # 解析项目和描述
@@ -187,101 +188,33 @@ select_multiple_bash() {
         ((i++))
     done
 
-    # 读取单个按键
-    read_key() {
-        local key
-        IFS= read -rsn1 key
-        if [[ $key == $'\x1b' ]]; then
-            read -rsn2 -t 0.1 key
-            case "$key" in
-                '[A') echo "UP" ;;
-                '[B') echo "DOWN" ;;
-                *) echo "ESC" ;;
-            esac
-        elif [[ $key == "" ]]; then
-            echo "ENTER"
-        elif [[ $key == " " ]]; then
-            echo "SPACE"
-        elif [[ $key == "q" || $key == "Q" ]]; then
-            echo "QUIT"
-        fi
-    }
-
-    # 主循环
-    while true; do
-        # 清屏并重绘整个菜单
-        clear
-        
-        echo -e "\n${BOLD}$prompt${NC}\n"
-        echo -e "${DIM}  ↑↓ 选择  │  空格 选中/取消  │  回车 确认${NC}\n"
-
-        local j=0
-        for name in "${item_names[@]}"; do
-            local check="[ ]"
-
-            # 检查是否选中
-            for sel in "${selected[@]}"; do
-                if [ "$sel" = "$j" ]; then
-                    check="${GREEN}[✓]${NC}"
-                    break
-                fi
-            done
-
-            # 当前行高亮
-            if [ "$j" = "$current" ]; then
-                echo -e "  ${CYAN}▶${NC} $check ${BOLD}$name${NC} ${DIM}${item_descs[$j]}${NC}"
-            else
-                echo -e "    $check $name ${DIM}${item_descs[$j]}${NC}"
-            fi
-            ((j++))
-        done
-
-        echo ""
-        
-        local action=$(read_key)
-
-        case "$action" in
-            UP)
-                ((current--))
-                [ $current -lt 0 ] && current=$((total - 1))
-                ;;
-            DOWN)
-                ((current++))
-                [ $current -ge $total ] && current=0
-                ;;
-            SPACE)
-                # 切换选中状态
-                local found=-1
-                local k=0
-                for sel in "${selected[@]}"; do
-                    if [ "$sel" = "$current" ]; then
-                        found=$k
-                        break
-                    fi
-                    ((k++))
-                done
-
-                if [ $found -ge 0 ]; then
-                    selected=("${selected[@]:0:$found}" "${selected[@]:$((found+1))}")
-                else
-                    selected+=("$current")
-                fi
-                ;;
-            ENTER)
-                break
-                ;;
-            QUIT|ESC)
-                selected=()
-                break
-                ;;
-        esac
+    # 显示选项
+    echo ""
+    echo -e "${BOLD}$prompt${NC}"
+    echo ""
+    
+    local j=1
+    for name in "${item_names[@]}"; do
+        echo -e "  ${CYAN}$j${NC}) $name ${DIM}${item_descs[$((j-1))]}${NC}"
+        ((j++))
     done
-
-    # 返回选中的项目名称
-    for sel in "${selected[@]}"; do
-        echo "${item_names[$sel]}"
+    
+    echo ""
+    echo -ne "${DIM}请输入编号（多选用空格分隔，如 1 3）: ${NC}"
+    
+    local choices
+    read choices
+    
+    # 解析用户输入
+    for choice in $choices; do
+        # 验证是数字且在范围内
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$total" ]; then
+            local idx=$((choice - 1))
+            echo "${item_names[$idx]}"
+        fi
     done
 }
+
 
 
 
