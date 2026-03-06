@@ -150,7 +150,7 @@ select_multiple_fzf() {
     shift
     local items=("$@")
 
-    printf '%s\n' "${items[@]}" | fzf --prompt="$prompt " --multi --height=~40% --reverse
+    printf '%s\n' "${items[@]}" | fzf --prompt="$prompt " --multi --height=~40% --reverse --bind "space:toggle"
 }
 
 # 使用 gum 进行多选
