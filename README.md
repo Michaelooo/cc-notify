@@ -4,6 +4,7 @@
 
 [![macOS](https://img.shields.io/badge/platform-macos-lightgrey)](https://www.apple.com/macos)
 [![Bark](https://img.shields.io/badge/push-Bark-green)](https://github.com/Finb/Bark)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## 为什么需要它
 
@@ -13,7 +14,7 @@
 - 问你「用 A 还是 B」，等你选
 - 任务出错或完成，等你下一步
 
-如果你这时在查文档、开会或锁屏，**你根本不知道**，AI 在那边空等，你也白白浪费时间。  
+如果你这时在查文档、开会或锁屏，**你根本不知道**，AI 在那边空等，你也白白浪费时间。
 **cc-notify** 会在这些「需要人介入」的时刻，把通知推到你的手机，让你马上回来处理，而不是事后才发现卡住了。
 
 ## 核心理念
@@ -66,6 +67,30 @@ cd cc-notify
 
 首次使用需在 **系统设置 → 隐私与安全 → 辅助功能** 中授权终端应用（用于判断你是否正在看终端，避免重复打扰）。
 
+## 安装界面
+
+安装脚本会自动检测已安装的 AI 工具，并提供交互式多选界面：
+
+```
+╔──────────────────────────────────────╗
+│  🚀 cc-notify 智能通知系统           │
+╚──────────────────────────────────────╝
+
+━━━ [1/5] 检查依赖
+✅ 依赖完整
+
+━━━ [2/5] 检测已安装的 AI 工具
+
+  ✅ Claude Code   ~/.claude/settings.json
+  ✅ Cursor        ~/.cursor/hooks.json
+  ⚠️  OpenCode     (未安装)
+
+━━━ [3/5] 配置 Bark 通知
+...
+```
+
+**提示**：如果安装了 `fzf` 或 `gum`，会获得更好的交互体验。
+
 ## 典型场景
 
 ### 需要你确认时 → 马上通知
@@ -108,9 +133,9 @@ cd cc-notify
 cc-notify/
 ├── install.sh              # 一键安装入口
 ├── lib/
-│   ├── common.sh           # 公共函数
+│   ├── common.sh           # 公共函数（交互、日志等）
 │   ├── detect.sh           # 工具检测
-│   ├── configure.sh        # 配置写入
+│   ├── configure.sh        # 配置合并
 │   └── notify.sh           # 核心通知脚本
 ├── templates/
 │   ├── claude-hooks.json   # Claude Code hooks
@@ -118,18 +143,21 @@ cc-notify/
 │   └── opencode-hooks.json # OpenCode hooks
 ├── doc/
 │   └── AI-Coding-智能通知系统-最终版.md
+├── CHANGELOG.md
 └── README.md
 ```
 
 ## 配置文件
 
-| 文件 | 路径 |
-|-----|------|
-| 用户配置 | `~/.cc-notify/config.json` |
-| 通知脚本 | `~/.cc-notify/bin/smart-notify.sh` |
-| Claude Code | `~/.claude/settings.json` |
-| Cursor | `~/.cursor/hooks.json` |
-| OpenCode | `~/.config/opencode/opencode.json` |
+| 文件 | 路径 | 合并策略 |
+|-----|------|---------|
+| 用户配置 | `~/.cc-notify/config.json` | 保留现有配置 |
+| 通知脚本 | `~/.cc-notify/bin/smart-notify.sh` | 覆盖更新 |
+| Claude Code | `~/.claude/settings.json` | 合并 hooks，保留其他 |
+| Cursor | `~/.cursor/hooks.json` | 合并 hooks，保留其他 |
+| OpenCode | `~/.config/opencode/opencode.json` | 合并 hooks，保留其他 |
+
+**重要**：安装时会自动备份原有配置文件（`.bak.时间戳`）。
 
 ## 测试
 
@@ -142,6 +170,9 @@ cc-notify/
 
 # 低优先级
 ~/.cc-notify/bin/smart-notify.sh "测试" "低优先级" "low"
+
+# 调试模式（显示详细日志）
+CC_NOTIFY_DEBUG=1 ~/.cc-notify/bin/smart-notify.sh "测试" "调试" "normal"
 ```
 
 ## 故障排查
@@ -162,12 +193,35 @@ cc-notify/
 - 检查 `~/.cc-notify/config.json` 里的 Bark Key
 - 检查网络
 
+### 调试模式
+
+```bash
+# 开启详细日志
+CC_NOTIFY_DEBUG=1 ~/.cc-notify/bin/smart-notify.sh "测试" "内容" "normal"
+```
+
+输出示例：
+```
+[DEBUG] 配置加载成功: BARK_URL=https://api.day.app
+[DEBUG] 锁屏状态: 0
+[DEBUG] 应用信息: [Cursor    /Applications/Cursor.app    com.todesktop.230313mzl4w4u92]
+[DEBUG] 进程名: [Cursor]
+[DEBUG] 应用路径: [/Applications/Cursor.app]
+[DEBUG] Bundle ID: [com.todesktop.230313mzl4w4u92]
+[DEBUG] 匹配编辑器应用（路径）: /Applications/Cursor.app
+[DEBUG] 用户在关注中，不发送通知
+```
+
 ## 参考
 
 - [Bark](https://github.com/Finb/Bark) - iOS 通知推送
 - [Claude Code Hooks](https://docs.anthropic.com/claude-code/hooks) - 官方文档
 - [Cursor](https://cursor.com) - AI Code Editor
 - [OpenCode](https://opencode.ai) - 开源 AI 编程助手
+
+## Changelog
+
+详见 [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 

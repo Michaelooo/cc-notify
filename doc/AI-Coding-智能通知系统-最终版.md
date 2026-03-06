@@ -386,7 +386,3 @@ curl "https://api.day.app/H9Cs47PmdcJPACbLzvuNmC/测试/内容"
 - Cursor Hooks: https://cursor.com/docs/agent/hooks
 - macOS Quartz: https://developer.apple.com/documentation/coregraphics
 
----
-
-*使用 doc-generator 技能生成  
-生成时间: 2026-03-05*
