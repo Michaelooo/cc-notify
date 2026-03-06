@@ -164,7 +164,7 @@ select_multiple_gum() {
 
 # 纯 bash 多选界面
 # 参数：prompt, item1:description1, item2:description2, ...
-# 返回：选中的项目编号（空格分隔）
+# 返回：选中的项目名称（换行分隔）
 select_multiple_bash() {
     local prompt="$1"
     shift
@@ -189,14 +189,16 @@ select_multiple_bash() {
 
     # 清屏并显示选项
     draw_menu() {
-        echo -e "\n${BOLD}$prompt${NC}"
+        # 使用 tput cup 定位到固定位置
+        tput cup 0 0 2>/dev/null
+        
+        echo -e "${BOLD}$prompt${NC}"
         echo -e "${DIM}────────────────────────────────${NC}"
         echo -e "${DIM}  ↑↓ 选择  │  空格 选中/取消  │  回车 确认${NC}"
         echo -e "${DIM}────────────────────────────────${NC}"
 
         local j=0
         for name in "${item_names[@]}"; do
-            local marker="  "
             local check="[ ]"
 
             # 检查是否选中
@@ -215,6 +217,9 @@ select_multiple_bash() {
             fi
             ((j++))
         done
+
+        # 清除到屏幕末尾（处理选项变少的情况）
+        tput ed 2>/dev/null
     }
 
     # 读取单个按键
@@ -237,12 +242,11 @@ select_multiple_bash() {
         fi
     }
 
+    # 清屏一次
+    clear
+
     # 主循环
     while true; do
-        # 清除之前的输出
-        tput cuu $((total + 5)) 2>/dev/null
-        tput ed 2>/dev/null
-
         draw_menu
 
         local action=$(read_key)
@@ -280,7 +284,7 @@ select_multiple_bash() {
                 # 确认
                 break
                 ;;
-            QUIT)
+            QUIT|ESC)
                 # 取消
                 selected=()
                 break
@@ -288,7 +292,8 @@ select_multiple_bash() {
         esac
     done
 
-    # 恢复光标
+    # 清屏并恢复光标
+    clear
     tput cnorm 2>/dev/null
 
     # 返回选中的项目名称
@@ -296,6 +301,7 @@ select_multiple_bash() {
         echo "${item_names[$sel]}"
     done
 }
+
 
 # 智能多选界面（自动选择最佳方式）
 # 参数：prompt, item1:description1, item2:description2, ...
