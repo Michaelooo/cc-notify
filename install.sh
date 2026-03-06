@@ -185,7 +185,7 @@ do_install() {
 
     for tool in $SELECTED_TOOLS; do
         ((current++))
-        show_progress $current $total "配置 $tool"
+        log_info "配置 $tool..."
 
         case "$tool" in
             claude-code)
