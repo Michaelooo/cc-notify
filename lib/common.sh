@@ -46,9 +46,8 @@ print_step() {
     local step="$1"
     local total="$2"
     local desc="$3"
-    echo -e "\n${CYAN}━━━${NC} ${BOLD}[${step}/${total}]${NC} ${desc}"
+    echo -e "\n${BOLD}[${step}/${total}]${NC} ${desc}"
 }
-
 # 检查命令是否存在
 command_exists() {
     command -v "$1" &>/dev/null
@@ -300,7 +299,7 @@ show_progress() {
     local filled=$((percent / 2))
     local empty=$((50 - filled))
 
-    printf "\r${CYAN}━━━${NC} %s [${GREEN}" "$desc"
+    printf "\r${BOLD}%s${NC} [${GREEN}" "$desc"
     printf "%${filled}s" | tr ' ' '█'
     printf "${DIM}"
     printf "%${empty}s" | tr ' ' '░'
