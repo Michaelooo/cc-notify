@@ -165,6 +165,9 @@ select_multiple_gum() {
 # 纯 bash 多选界面
 # 参数：prompt, item1:description1, item2:description2, ...
 # 返回：选中的项目名称（换行分隔）
+# 纯 bash 多选界面（简化版，更好的兼容性）
+# 参数：prompt, item1:description1, item2:description2, ...
+# 返回：选中的项目名称（换行分隔）
 select_multiple_bash() {
     local prompt="$1"
     shift
@@ -184,18 +187,33 @@ select_multiple_bash() {
         ((i++))
     done
 
-    # 隐藏光标
-    tput civis 2>/dev/null
+    # 读取单个按键
+    read_key() {
+        local key
+        IFS= read -rsn1 key
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 -t 0.1 key
+            case "$key" in
+                '[A') echo "UP" ;;
+                '[B') echo "DOWN" ;;
+                *) echo "ESC" ;;
+            esac
+        elif [[ $key == "" ]]; then
+            echo "ENTER"
+        elif [[ $key == " " ]]; then
+            echo "SPACE"
+        elif [[ $key == "q" || $key == "Q" ]]; then
+            echo "QUIT"
+        fi
+    }
 
-    # 清屏并显示选项
-    draw_menu() {
-        # 使用 tput cup 定位到固定位置
-        tput cup 0 0 2>/dev/null
+    # 主循环
+    while true; do
+        # 清屏并重绘整个菜单
+        clear
         
-        echo -e "${BOLD}$prompt${NC}"
-        echo -e "${DIM}────────────────────────────────${NC}"
-        echo -e "${DIM}  ↑↓ 选择  │  空格 选中/取消  │  回车 确认${NC}"
-        echo -e "${DIM}────────────────────────────────${NC}"
+        echo -e "\n${BOLD}$prompt${NC}\n"
+        echo -e "${DIM}  ↑↓ 选择  │  空格 选中/取消  │  回车 确认${NC}\n"
 
         local j=0
         for name in "${item_names[@]}"; do
@@ -218,37 +236,8 @@ select_multiple_bash() {
             ((j++))
         done
 
-        # 清除到屏幕末尾（处理选项变少的情况）
-        tput ed 2>/dev/null
-    }
-
-    # 读取单个按键
-    read_key() {
-        local key
-        IFS= read -rsn1 key
-        if [[ $key == $'\x1b' ]]; then
-            read -rsn2 -t 0.1 key
-            case "$key" in
-                '[A') echo "UP" ;;
-                '[B') echo "DOWN" ;;
-                *) echo "ESC" ;;
-            esac
-        elif [[ $key == "" ]]; then
-            echo "ENTER"
-        elif [[ $key == " " ]]; then
-            echo "SPACE"
-        elif [[ $key == "q" || $key == "Q" ]]; then
-            echo "QUIT"
-        fi
-    }
-
-    # 清屏一次
-    clear
-
-    # 主循环
-    while true; do
-        draw_menu
-
+        echo ""
+        
         local action=$(read_key)
 
         case "$action" in
@@ -273,34 +262,27 @@ select_multiple_bash() {
                 done
 
                 if [ $found -ge 0 ]; then
-                    # 取消选中
                     selected=("${selected[@]:0:$found}" "${selected[@]:$((found+1))}")
                 else
-                    # 选中
                     selected+=("$current")
                 fi
                 ;;
             ENTER)
-                # 确认
                 break
                 ;;
             QUIT|ESC)
-                # 取消
                 selected=()
                 break
                 ;;
         esac
     done
 
-    # 清屏并恢复光标
-    clear
-    tput cnorm 2>/dev/null
-
     # 返回选中的项目名称
     for sel in "${selected[@]}"; do
         echo "${item_names[$sel]}"
     done
 }
+
 
 
 # 智能多选界面（自动选择最佳方式）
