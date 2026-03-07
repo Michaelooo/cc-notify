@@ -24,6 +24,7 @@ source "$SCRIPT_DIR/lib/configure.sh"
 DETECTION_RESULT=""
 SELECTED_TOOLS=()
 INPUT_BARK_KEY=""
+INPUT_DEVICE_NAME=""
 
 # ============================================================
 # 安装步骤
@@ -31,7 +32,7 @@ INPUT_BARK_KEY=""
 
 # 检查依赖
 check_dependencies() {
-    print_step "1" "5" "检查依赖"
+    print_step "1" "6" "检查依赖"
 
     local missing=()
 
@@ -68,7 +69,7 @@ check_dependencies() {
 
 # 检测 AI 工具
 detect_ai_tools() {
-    print_step "2" "5" "检测已安装的 AI 工具"
+    print_step "2" "6" "检测已安装的 AI 工具"
 
     DETECTION_RESULT=$(detect_all)
 
@@ -76,6 +77,8 @@ detect_ai_tools() {
     local claude=$(echo "$DETECTION_RESULT" | jq -r '.["claude-code"]')
     local cursor=$(echo "$DETECTION_RESULT" | jq -r '.cursor')
     local opencode=$(echo "$DETECTION_RESULT" | jq -r '.opencode')
+    local obsidian=$(echo "$DETECTION_RESULT" | jq -r '.obsidian')
+    local claudian=$(echo "$DETECTION_RESULT" | jq -r '.claudian')
 
     echo ""
     if [ "$claude" = "installed" ]; then
@@ -95,11 +98,22 @@ detect_ai_tools() {
     else
         echo -e "  ${DIM}○${NC} OpenCode      ${DIM}(未安装)${NC}"
     fi
+
+    if [ "$obsidian" = "installed" ]; then
+        echo -e "  ${GREEN}●${NC} Obsidian      ${DIM}(Claudian 插件宿主)${NC}"
+        if [ "$claudian" = "installed" ]; then
+            echo -e "    ${GREEN}└─${NC} Claudian   ${DIM}已安装${NC}"
+        else
+            echo -e "    ${DIM}└─ Claudian (未检测到)${NC}"
+        fi
+    else
+        echo -e "  ${DIM}○${NC} Obsidian      ${DIM}(未安装)${NC}"
+    fi
 }
 
 # 配置 Bark
 configure_bark() {
-    print_step "3" "5" "配置 Bark 通知"
+    print_step "3" "6" "配置 Bark 通知"
 
     if [ -n "$BARK_KEY" ]; then
         log_info "检测到环境变量 BARK_KEY"
@@ -133,19 +147,41 @@ configure_bark() {
     fi
 }
 
+# 配置设备名称
+configure_device() {
+    print_step "4" "6" "配置设备标识"
+
+    local default_name=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "Mac")
+
+    echo ""
+    echo -e "${DIM}设置设备名称可以在通知中区分来源设备${NC}"
+    echo -e "${DIM}例如: 办公Mac、家里MacBook、公司电脑等${NC}"
+    echo ""
+
+    INPUT_DEVICE_NAME=$(read_input "请输入设备名称" "$default_name")
+
+    if [ -z "$INPUT_DEVICE_NAME" ]; then
+        INPUT_DEVICE_NAME="$default_name"
+    fi
+
+    log_info "设备名称: $INPUT_DEVICE_NAME"
+}
+
 # 选择要配置的工具（多选界面）
 select_tools() {
-    print_step "4" "5" "选择要配置的工具"
+    print_step "5" "6" "选择要配置的工具"
 
     # 构建选项列表
     local options=()
     local claude=$(echo "$DETECTION_RESULT" | jq -r '.["claude-code"]')
     local cursor=$(echo "$DETECTION_RESULT" | jq -r '.cursor')
     local opencode=$(echo "$DETECTION_RESULT" | jq -r '.opencode')
+    local obsidian=$(echo "$DETECTION_RESULT" | jq -r '.obsidian')
 
     [ "$claude" = "installed" ] && options+=("claude-code:Claude Code - ~/.claude/settings.json")
     [ "$cursor" = "installed" ] && options+=("cursor:Cursor - ~/.cursor/hooks.json")
     [ "$opencode" = "installed" ] && options+=("opencode:OpenCode - ~/.config/opencode/opencode.json")
+    [ "$obsidian" = "installed" ] && options+=("claudian:Claudian (Obsidian) - 使用 Claude Code hooks")
 
     if [ ${#options[@]} -eq 0 ]; then
         log_error "没有检测到可配置的 AI 工具"
@@ -167,14 +203,14 @@ select_tools() {
 
 # 执行安装
 do_install() {
-    print_step "5" "5" "写入配置"
+    print_step "6" "6" "写入配置"
 
     # 创建目录
     ensure_dir "$HOME/.cc-notify/bin"
     ensure_dir "$HOME/.cc-notify/lib"
 
-    # 写入用户配置
-    write_user_config "$INPUT_BARK_KEY"
+    # 写入用户配置（包含设备名称）
+    write_user_config "$INPUT_BARK_KEY" "$INPUT_DEVICE_NAME"
 
     # 安装通知脚本
     install_notify_script
@@ -196,6 +232,9 @@ do_install() {
                 ;;
             opencode)
                 write_opencode_hooks
+                ;;
+            claudian)
+                configure_claudian
                 ;;
         esac
     done
@@ -233,6 +272,7 @@ main() {
     check_dependencies
     detect_ai_tools
     configure_bark
+    configure_device
     select_tools
     do_install
     show_complete_info

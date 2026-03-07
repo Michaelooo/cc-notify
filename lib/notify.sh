@@ -9,6 +9,10 @@ PRIORITY="${3:-normal}"  # high / normal / low
 
 # 配置文件路径
 CONFIG_FILE="$HOME/.cc-notify/config.json"
+# 锁文件目录
+LOCK_DIR="$HOME/.cc-notify/locks"
+# 去重时间窗口（秒）- 同一通知在窗口内只发送一次
+DEDUP_WINDOW="${CC_NOTIFY_DEDUP_WINDOW:-60}"
 
 # 调试模式（设置 CC_NOTIFY_DEBUG=1 开启）
 [ "$CC_NOTIFY_DEBUG" = "1" ] && DEBUG="true" || DEBUG="false"
@@ -32,6 +36,7 @@ load_config() {
 
     BARK_KEY=$(jq -r '.bark.key' "$CONFIG_FILE" 2>/dev/null)
     BARK_URL=$(jq -r '.bark.url' "$CONFIG_FILE" 2>/dev/null)
+    DEVICE_NAME=$(jq -r '.device.name // empty' "$CONFIG_FILE" 2>/dev/null)
 
     if [ -z "$BARK_KEY" ] || [ "$BARK_KEY" = "null" ]; then
         echo "错误: Bark Key 未配置" >&2
@@ -40,35 +45,166 @@ load_config() {
 
     # 默认 URL
     BARK_URL="${BARK_URL:-https://api.day.app}"
-    debug_log "配置加载成功: BARK_URL=$BARK_URL"
+
+    # 如果没有配置设备名称，使用主机名
+    if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "null" ]; then
+        DEVICE_NAME=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "Unknown")
+    fi
+
+    debug_log "配置加载成功: BARK_URL=$BARK_URL, DEVICE=$DEVICE_NAME"
 }
 
-# URL 编码
+# 获取当前终端名称
+get_terminal_name() {
+    # 尝试从环境变量获取
+    if [ -n "$TERM_PROGRAM" ]; then
+        echo "$TERM_PROGRAM"
+        return
+    fi
+
+    # 尝试从父进程获取
+    local parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
+    if [ -n "$parent_cmd" ]; then
+        case "$parent_cmd" in
+            *iTerm*) echo "iTerm" ;;
+            *Terminal*) echo "Terminal" ;;
+            *kitty*) echo "Kitty" ;;
+            *warp*) echo "Warp" ;;
+            *alacritty*) echo "Alacritty" ;;
+            *cursor*) echo "Cursor" ;;
+            *code*) echo "VSCode" ;;
+            *) echo "$parent_cmd" ;;
+        esac
+        return
+    fi
+
+    echo "Terminal"
+}
+
+# 生成通知唯一标识（用于去重）
+get_notify_hash() {
+    echo "${TITLE}||${BODY}" | shasum -a 256 | cut -d' ' -f1
+}
+
+# 使用文件锁进行原子去重
+# 返回 0 表示可以发送，返回 1 表示已被其他实例发送
+try_acquire_lock() {
+    local hash=$(get_notify_hash)
+    local lock_file="$LOCK_DIR/${hash}.lock"
+    local now=$(date +%s)
+
+    # 创建锁目录
+    mkdir -p "$LOCK_DIR" 2>/dev/null
+
+    # 尝试获取锁（使用 mkdir 作为原子操作）
+    if mkdir "$lock_file" 2>/dev/null; then
+        # 成功获取锁，写入时间戳
+        echo "$now" > "$lock_file/timestamp"
+        debug_log "获取锁成功: $hash"
+        return 0
+    fi
+
+    # 锁已存在，检查是否过期
+    local lock_time=$(cat "$lock_file/timestamp" 2>/dev/null || echo "0")
+    local age=$((now - lock_time))
+
+    if [ "$age" -gt "$DEDUP_WINDOW" ]; then
+        # 锁已过期，强制获取
+        rm -rf "$lock_file" 2>/dev/null
+        if mkdir "$lock_file" 2>/dev/null; then
+            echo "$now" > "$lock_file/timestamp"
+            debug_log "锁已过期，重新获取: $hash"
+            return 0
+        fi
+    fi
+
+    debug_log "锁被占用，跳过发送 (已锁定 ${age}秒)"
+    return 1
+}
+
+# 释放锁
+release_lock() {
+    local hash=$(get_notify_hash)
+    local lock_file="$LOCK_DIR/${hash}.lock"
+    # 延迟释放锁，确保其他实例在窗口期内不会重复发送
+    # 锁会在 try_acquire_lock 中过期后自动释放
+}
+
+# 清理过期的锁文件
+cleanup_expired_locks() {
+    local now=$(date +%s)
+    local count=0
+
+    # 检查锁目录是否存在
+    [ -d "$LOCK_DIR" ] || return 0
+
+    # 使用 find 避免空目录时的通配符问题
+    find "$LOCK_DIR" -name "*.lock" -type d 2>/dev/null | while read -r lock_dir; do
+        local lock_time=$(cat "$lock_dir/timestamp" 2>/dev/null || echo "0")
+        local age=$((now - lock_time))
+
+        if [ "$age" -gt 300 ]; then  # 5分钟以上的锁清理掉
+            rm -rf "$lock_dir"
+            ((count++))
+        fi
+    done
+
+    [ "$count" -gt 0 ] && debug_log "清理了 $count 个过期锁"
+}
+
+# URL 编码（正确处理换行）
 url_encode() {
     local str="$1"
-    echo "$str" | jq -sRr @uri
+    # 使用 jq 进行 URL 编码，它会正确处理换行符
+    echo -n "$str" | jq -sRr @uri
 }
 
 # 发送通知
 send_notification() {
-    local encoded_title=$(url_encode "$TITLE")
-    local encoded_body=$(url_encode "$BODY")
+    # 构建带设备信息的通知内容
+    local terminal_name=$(get_terminal_name)
+    local source_info="${DEVICE_NAME}"
+
+    if [ -n "$terminal_name" ] && [ "$terminal_name" != "$DEVICE_NAME" ]; then
+        source_info="${DEVICE_NAME} · ${terminal_name}"
+    fi
+
+    # 使用 POST 请求，body 中使用 \n 字符串作为换行符
+    local final_body="${BODY}\\n📍 ${source_info}"
 
     # 根据优先级设置级别
     local level=""
     case "$PRIORITY" in
         high)
-            level="&level=timeSensitive"
+            level="timeSensitive"
             ;;
         low)
-            level="&level=active"
+            level="active"
+            ;;
+        *)
+            level=""
             ;;
     esac
 
-    local url="${BARK_URL}/${BARK_KEY}/${encoded_title}/${encoded_body}?group=cc-notify${level}"
+    # 构建 JSON body
+    local json_body=$(jq -n \
+        --arg title "$TITLE" \
+        --arg body "$final_body" \
+        --arg group "cc-notify" \
+        --arg level "$level" \
+        '{
+            title: $title,
+            body: $body,
+            group: $group
+        } + (if $level != "" then {level: $level} else {} end)')
 
-    debug_log "发送通知: $url"
-    local response=$(curl -s "$url")
+    local url="${BARK_URL}/${BARK_KEY}"
+
+    debug_log "发送通知 (POST): $url"
+    debug_log "内容: $json_body"
+    local response=$(curl -s -X POST "$url" \
+        -H "Content-Type: application/json; charset=utf-8" \
+        -d "$json_body")
     debug_log "响应: $response"
 }
 
@@ -159,7 +295,8 @@ is_focused_app() {
             *"/Cursor.app"|*"/Code.app"|*"/Visual Studio Code.app"| \
             *"/IntelliJ"*|*"/WebStorm.app"|*"/PyCharm.app"| \
             *"/GoLand.app"|*"/CLion.app"|*"/Android Studio"*| \
-            *"/Xcode.app"|*"/Sublime"*|*"/Atom.app"|*"/Zed.app")
+            *"/Xcode.app"|*"/Sublime"*|*"/Atom.app"|*"/Zed.app"| \
+            *"/Obsidian.app")
                 debug_log "匹配编辑器应用（路径）: $proc_path"
                 return 0
                 ;;
@@ -171,10 +308,10 @@ is_focused_app() {
         case "$bundle_id" in
             com.todesktop.*|com.microsoft.VSCode|com.jetbrains.*| \
             com.apple.dt.Xcode|com.sublimetext.*|com.github.atom| \
-            dev.zed.Zed)
-                debug_log "匹配编辑器应用（Bundle ID）: $bundle_id"
-                return 0
-                ;;
+            dev.zed.Zed|md.obsidian)
+            debug_log "匹配编辑器应用（Bundle ID）: $bundle_id"
+            return 0
+            ;;
         esac
     fi
 
@@ -190,7 +327,8 @@ is_focused_app() {
        [[ "$proc_name" == *"Xcode"* ]] || \
        [[ "$proc_name" == *"Sublime"* ]] || \
        [[ "$proc_name" == *"Atom"* ]] || \
-       [[ "$proc_name" == *"Zed"* ]]; then
+       [[ "$proc_name" == *"Zed"* ]] || \
+       [[ "$proc_name" == *"Obsidian"* ]]; then
         debug_log "匹配编辑器应用（进程名）: $proc_name"
         return 0
     fi
@@ -279,6 +417,24 @@ should_notify() {
 main() {
     # 加载配置
     load_config
+
+    # 高优先级通知（需要用户介入）跳过去重，直接发送
+    if [ "$PRIORITY" = "high" ]; then
+        debug_log "高优先级通知（需要用户介入），跳过去重"
+        if should_notify; then
+            send_notification
+        fi
+        exit 0
+    fi
+
+    # 清理过期锁
+    cleanup_expired_locks
+
+    # 尝试获取锁（原子去重）- 只对 normal/low 优先级的通知去重
+    if ! try_acquire_lock; then
+        debug_log "通知被去重拦截（其他实例已发送）"
+        exit 0
+    fi
 
     # 判断是否发送
     if should_notify; then

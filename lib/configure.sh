@@ -10,35 +10,53 @@ get_templates_dir() {
 # 写入用户配置文件（合并模式）
 write_user_config() {
     local bark_key="$1"
+    local device_name="$2"
     local target="$HOME/.cc-notify/config.json"
 
     ensure_dir "$(dirname "$target")"
 
+    # 如果没有提供设备名称，使用主机名
+    if [ -z "$device_name" ]; then
+        device_name=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "Mac")
+    fi
+
     if [ -f "$target" ]; then
-        # 保留现有配置，只更新 bark key
+        # 保留现有配置，只更新 bark key 和设备名称
         local tmp_file="${target}.tmp"
-        jq --arg key "$bark_key" '.bark.key = $key' "$target" > "$tmp_file"
+        jq --arg key "$bark_key" --arg device "$device_name" \
+            '.bark.key = $key | .device.name = $device' "$target" > "$tmp_file"
         mv "$tmp_file" "$target"
-        log_success "用户配置: $target (已更新 Bark Key)"
+        log_success "用户配置: $target (已更新 Bark Key 和设备名称)"
     else
         jq -n \
             --arg version "1.0.0" \
             --arg key "$bark_key" \
+            --arg device "$device_name" \
             '{
                 "version": $version,
                 "bark": {
                     "key": $key,
                     "url": "https://api.day.app"
                 },
+                "device": {
+                    "name": $device,
+                    "terminal": ""
+                },
                 "tools": {
                     "claude-code": { "enabled": false },
                     "cursor": { "enabled": false },
-                    "opencode": { "enabled": false }
+                    "opencode": { "enabled": false },
+                    "claudian": { "enabled": false }
                 },
                 "smart_detect": {
                     "enabled": true,
                     "terminal_apps": ["iTerm", "Terminal", "Kitty", "Warp", "Alacritty"],
                     "editor_apps": ["Cursor", "Code", "JetBrains", "IntelliJ"]
+                },
+                "dedup": {
+                    "enabled": true,
+                    "window_seconds": 60,
+                    "threshold": 3
                 }
             }' > "$target"
         log_success "用户配置: $target (已创建)"
@@ -188,6 +206,25 @@ write_opencode_hooks() {
 
     if [ $result -eq 0 ]; then
         update_tool_status "opencode" "true"
+    fi
+
+    return $result
+}
+
+# 配置 Claudian（使用 Claude Code 的 hooks）
+# Claudian 是基于 Claude Code SDK 的 Obsidian 插件
+# 它会自动继承 ~/.claude/settings.json 中配置的 hooks
+configure_claudian() {
+    log_info "Claudian 使用 Claude Code 的 hooks 配置"
+    log_info "将自动配置 Claude Code hooks..."
+
+    # 配置 Claude Code hooks（Claudian 会继承）
+    merge_claude_hooks
+    local result=$?
+
+    if [ $result -eq 0 ]; then
+        update_tool_status "claudian" "true"
+        log_success "Claudian 配置完成（继承 Claude Code hooks）"
     fi
 
     return $result
