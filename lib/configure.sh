@@ -25,6 +25,15 @@ write_user_config() {
         device_name=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "Mac")
     fi
 
+    # 清理可能被旧版 read_input 捕获进去的提示词和 ANSI 转义序列
+    device_name=$(printf '%s' "$device_name" | perl -pe 's/\e\[[0-9;]*[A-Za-z]//g')
+    case "$device_name" in
+        请输入设备名称*)
+            device_name=$(printf '%s' "$device_name" | sed -E 's/^请输入设备名称[^:]*:[[:space:]]*//')
+            ;;
+    esac
+    device_name=$(printf '%s' "$device_name" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
     if [ -f "$target" ]; then
         # 保留现有配置，只更新 bark key 和设备名称
         local tmp_file="${target}.tmp"
@@ -216,6 +225,7 @@ merge_claude_hooks() {
     local result=$?
 
     if [ $result -eq 0 ]; then
+        cleanup_legacy_claude_hook_script
         update_tool_status "claude-code" "true"
     fi
 
@@ -307,6 +317,19 @@ EOF
 codex_hooks = true
 EOF
     log_success "Codex: 已追加 hooks feature 配置"
+}
+
+cleanup_legacy_claude_hook_script() {
+    local legacy_script="$HOME/.claude/hooks/smart-notify.sh"
+
+    [ -f "$legacy_script" ] || return 0
+
+    if grep -q "智能通知脚本 - 简化可靠版" "$legacy_script" 2>/dev/null || \
+       grep -q "核心逻辑：锁屏必发" "$legacy_script" 2>/dev/null; then
+        backup_file "$legacy_script"
+        rm -f "$legacy_script"
+        log_info "Claude Code: 已清理旧版 ~/.claude/hooks/smart-notify.sh"
+    fi
 }
 
 write_codex_hooks() {

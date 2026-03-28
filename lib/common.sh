@@ -87,12 +87,16 @@ read_input() {
     local default="$2"
     local result
 
+    if [ ! -t 0 ] && [ -r /dev/tty ]; then
+        exec < /dev/tty
+    fi
+
     if [ -n "$default" ]; then
-        echo -ne "${prompt} ${DIM}[${default}]${NC}: "
+        echo -ne "${prompt} ${DIM}[${default}]${NC}: " >&2
         read result
         echo "${result:-$default}"
     else
-        echo -ne "${prompt}: "
+        echo -ne "${prompt}: " >&2
         read result
         echo "$result"
     fi
@@ -103,13 +107,17 @@ confirm() {
     local prompt="$1"
     local default="${2:-Y}"
 
+    if [ ! -t 0 ] && [ -r /dev/tty ]; then
+        exec < /dev/tty
+    fi
+
     local choice
     if [ "$default" = "Y" ]; then
-        echo -ne "${prompt} ${DIM}[Y/n]${NC}: "
+        echo -ne "${prompt} ${DIM}[Y/n]${NC}: " >&2
         read choice
         [[ "$choice" =~ ^[Nn]$ ]] && return 1 || return 0
     else
-        echo -ne "${prompt} ${DIM}[y/N]${NC}: "
+        echo -ne "${prompt} ${DIM}[y/N]${NC}: " >&2
         read choice
         [[ "$choice" =~ ^[Yy]$ ]] && return 0 || return 1
     fi

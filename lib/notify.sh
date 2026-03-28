@@ -84,6 +84,52 @@ source_label() {
     esac
 }
 
+normalize_app_name() {
+    local raw="$1"
+    local name=""
+
+    [ -n "$raw" ] || return 1
+
+    name=$(basename "$raw")
+    name="${name%.app}"
+
+    case "$name" in
+        iTerm2|iTerm)
+            printf 'iTerm'
+            ;;
+        Apple_Terminal|Terminal|zsh|bash|sh|fish)
+            printf 'Terminal'
+            ;;
+        kitty|Kitty)
+            printf 'Kitty'
+            ;;
+        Warp|warp)
+            printf 'Warp'
+            ;;
+        Alacritty|alacritty)
+            printf 'Alacritty'
+            ;;
+        Hyper|hyper)
+            printf 'Hyper'
+            ;;
+        WezTerm|wezterm|wezterm-gui)
+            printf 'WezTerm'
+            ;;
+        Tabby|tabby)
+            printf 'Tabby'
+            ;;
+        Cursor)
+            printf 'Cursor'
+            ;;
+        Code|code|VSCodium|codium)
+            printf 'VSCode'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 trim_text() {
     local text="$1"
     text="${text#"${text%%[![:space:]]*}"}"
@@ -246,14 +292,23 @@ load_config() {
 }
 
 get_terminal_name() {
+    local normalized=""
+
     if [ -n "${TERM_PROGRAM:-}" ]; then
-        echo "$TERM_PROGRAM"
-        return
+        if normalized=$(normalize_app_name "$TERM_PROGRAM" 2>/dev/null); then
+            echo "$normalized"
+            return
+        fi
     fi
 
     local parent_cmd
     parent_cmd=$(ps -o comm= -p "$PPID" 2>/dev/null)
     if [ -n "$parent_cmd" ]; then
+        if normalized=$(normalize_app_name "$parent_cmd" 2>/dev/null); then
+            echo "$normalized"
+            return
+        fi
+
         case "$parent_cmd" in
             *iTerm*)
                 echo "iTerm"
@@ -277,7 +332,7 @@ get_terminal_name() {
                 echo "VSCode"
                 ;;
             *)
-                echo "$parent_cmd"
+                echo "Terminal"
                 ;;
         esac
         return
@@ -286,8 +341,49 @@ get_terminal_name() {
     echo "Terminal"
 }
 
+build_hook_dedup_subject() {
+    case "$EVENT_NAME" in
+        PermissionRequest)
+            join_lines "$HOOK_TOOL_NAME" "$(json_get '.tool_input.command')" "$(json_get '.tool_input.file_path')"
+            ;;
+        Notification)
+            join_lines "$NOTIFICATION_TYPE" "${HOOK_MESSAGE:-$HOOK_TITLE}"
+            ;;
+        Elicitation)
+            join_lines "$HOOK_MESSAGE" "$HOOK_ELICITATION_SOURCE" "$HOOK_ELICITATION_URL"
+            ;;
+        StopFailure)
+            join_lines "$HOOK_ERROR" "$HOOK_REASON" "${HOOK_MESSAGE:-$HOOK_TITLE}"
+            ;;
+        TaskCompleted)
+            join_lines "$HOOK_TASK_SUBJECT"
+            ;;
+        SessionEnd)
+            join_lines "$HOOK_REASON"
+            ;;
+        PostToolUse|PostToolUseFailure)
+            join_lines "$HOOK_TOOL_NAME" "$HOOK_ERROR" "$HOOK_TOOL_EXIT_CODE" "$HOOK_TOOL_RESPONSE_TEXT"
+            ;;
+        Stop)
+            join_lines "$HOOK_LAST_ASSISTANT_MESSAGE"
+            ;;
+        *)
+            join_lines "$HOOK_TITLE" "$HOOK_MESSAGE" "$HOOK_ERROR" "$HOOK_REASON"
+            ;;
+    esac
+}
+
+get_notify_fingerprint() {
+    if [ "$HOOK_JSON" = "true" ]; then
+        printf '%s' "hook||${EVENT_NAME}||${EVENT_SUBTYPE}||$(sanitize_line "$(build_hook_dedup_subject)")"
+        return
+    fi
+
+    printf '%s' "${SOURCE}||${EVENT_NAME}||${EVENT_SUBTYPE}||${TITLE}||${BODY}"
+}
+
 get_notify_hash() {
-    printf '%s' "${SOURCE}||${EVENT_NAME}||${EVENT_SUBTYPE}||${TITLE}||${BODY}" | shasum -a 256 | cut -d' ' -f1
+    get_notify_fingerprint | shasum -a 256 | cut -d' ' -f1
 }
 
 try_acquire_lock() {
