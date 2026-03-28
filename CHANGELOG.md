@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Claude Code / OpenCode 默认 hooks 改为基于精确事件分类，不再把 `Stop` 当成任务完成
+- 默认移除 `PostToolUseFailure` 的泛化错误提醒，减少过程态误报
+- Cursor 默认不再监听 `afterShellExecution`，降低 Shell 过程噪音
+- OpenCode 改为官方插件机制，不再假设兼容 Claude Code hooks
+- 通知脚本支持读取 hook stdin JSON，按事件自动决定标题、正文和优先级
+- 安装合并逻辑会升级已有 cc-notify hooks，而不是一直保留旧模板
+
+### Added
+- 统一 CLI 参数接口，便于接入其他 AI Coding 工具
+- `CC_NOTIFY_DRY_RUN` / `CC_NOTIFY_FORCE_NOTIFY` 调试能力，方便本地验证事件分类
+- Codex 全局 hooks 集成与 `codex_hooks` feature 自动启用
+
 ## [1.0.0] - 2026-03-06
 
 ### Added

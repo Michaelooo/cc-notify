@@ -13,6 +13,8 @@ tags:
 
 # AI Coding 智能通知系统 - 最终版
 
+> 注意：本文是早期设计稿，当前仓库的实际接入方式以仓库根目录的 `README.md` 和 `templates/` / `lib/` 下的实现为准。尤其是 Claude Code、OpenCode、Codex 的事件接入方式已经在后续版本中调整。
+
 > 核心设计：**只在用户真正需要时才打扰**
 > 
 > 如果用户在看屏幕 → 不通知  
@@ -385,4 +387,3 @@ curl "https://api.day.app/H9Cs47PmdcJPACbLzvuNmC/测试/内容"
 - Claude Code Hooks: https://code.claude.com/docs/hooks
 - Cursor Hooks: https://cursor.com/docs/agent/hooks
 - macOS Quartz: https://developer.apple.com/documentation/coregraphics
-

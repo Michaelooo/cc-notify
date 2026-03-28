@@ -1,32 +1,46 @@
 {
   "hooks": {
-    "Notification": [
+    "PermissionRequest": [
       {
-        "matcher": "permission_prompt",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.cc-notify/bin/smart-notify.sh '⚠️ 需要确认' 'Claude 需要您的选择' 'high'"
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
           }
         ]
-      },
+      }
+    ],
+    "Notification": [
       {
         "matcher": "idle_prompt",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.cc-notify/bin/smart-notify.sh '⏸️ 等待输入' 'Claude 正在等待您提供信息' 'high'"
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
           }
         ]
       }
     ],
-    "PostToolUseFailure": [
+    "Elicitation": [
       {
-        "matcher": "Bash|Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.cc-notify/bin/smart-notify.sh '❌ 执行失败' '命令执行出错，请查看终端' 'high'"
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
           }
         ]
       }
@@ -36,17 +50,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.cc-notify/bin/smart-notify.sh '🎉 全部完成' 'Claude 已完成所有任务' 'normal'"
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
           }
         ]
       }
     ],
-    "Stop": [
+    "SessionEnd": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "~/.cc-notify/bin/smart-notify.sh '✅ 对话结束' '可以继续了' 'low'",
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
             "async": true
           }
         ]

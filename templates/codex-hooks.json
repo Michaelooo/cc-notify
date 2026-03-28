@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh --source codex",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh --source codex",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

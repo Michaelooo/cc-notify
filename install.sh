@@ -77,6 +77,7 @@ detect_ai_tools() {
     local claude=$(echo "$DETECTION_RESULT" | jq -r '.["claude-code"]')
     local cursor=$(echo "$DETECTION_RESULT" | jq -r '.cursor')
     local opencode=$(echo "$DETECTION_RESULT" | jq -r '.opencode')
+    local codex=$(echo "$DETECTION_RESULT" | jq -r '.codex')
     local obsidian=$(echo "$DETECTION_RESULT" | jq -r '.obsidian')
     local claudian=$(echo "$DETECTION_RESULT" | jq -r '.claudian')
 
@@ -94,9 +95,15 @@ detect_ai_tools() {
     fi
 
     if [ "$opencode" = "installed" ]; then
-        echo -e "  ${GREEN}●${NC} OpenCode      ${DIM}~/.config/opencode/opencode.json${NC}"
+        echo -e "  ${GREEN}●${NC} OpenCode      ${DIM}~/.config/opencode/plugins/cc-notify.js${NC}"
     else
         echo -e "  ${DIM}○${NC} OpenCode      ${DIM}(未安装)${NC}"
+    fi
+
+    if [ "$codex" = "installed" ]; then
+        echo -e "  ${GREEN}●${NC} Codex         ${DIM}~/.codex/hooks.json${NC}"
+    else
+        echo -e "  ${DIM}○${NC} Codex         ${DIM}(未安装)${NC}"
     fi
 
     if [ "$obsidian" = "installed" ]; then
@@ -176,11 +183,13 @@ select_tools() {
     local claude=$(echo "$DETECTION_RESULT" | jq -r '.["claude-code"]')
     local cursor=$(echo "$DETECTION_RESULT" | jq -r '.cursor')
     local opencode=$(echo "$DETECTION_RESULT" | jq -r '.opencode')
+    local codex=$(echo "$DETECTION_RESULT" | jq -r '.codex')
     local obsidian=$(echo "$DETECTION_RESULT" | jq -r '.obsidian')
 
     [ "$claude" = "installed" ] && options+=("claude-code:Claude Code - ~/.claude/settings.json")
     [ "$cursor" = "installed" ] && options+=("cursor:Cursor - ~/.cursor/hooks.json")
-    [ "$opencode" = "installed" ] && options+=("opencode:OpenCode - ~/.config/opencode/opencode.json")
+    [ "$opencode" = "installed" ] && options+=("opencode:OpenCode - ~/.config/opencode/plugins/cc-notify.js")
+    [ "$codex" = "installed" ] && options+=("codex:Codex - ~/.codex/hooks.json")
     [ "$obsidian" = "installed" ] && options+=("claudian:Claudian (Obsidian) - 使用 Claude Code hooks")
 
     if [ ${#options[@]} -eq 0 ]; then
@@ -232,6 +241,9 @@ do_install() {
                 ;;
             opencode)
                 write_opencode_hooks
+                ;;
+            codex)
+                write_codex_hooks
                 ;;
             claudian)
                 configure_claudian

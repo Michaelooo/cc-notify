@@ -32,6 +32,19 @@ detect_opencode() {
     fi
 }
 
+# 检测 Codex
+detect_codex() {
+    if command -v codex &>/dev/null; then
+        echo "installed"
+    elif [ -d "/Applications/Codex.app" ]; then
+        echo "installed"
+    elif [ -f "$HOME/.codex/config.toml" ] || [ -f "$HOME/.codex/hooks.json" ]; then
+        echo "installed"
+    else
+        echo "not_installed"
+    fi
+}
+
 # 检测 Obsidian（Claudian 插件宿主）
 detect_obsidian() {
     # 检查 macOS 应用
@@ -85,6 +98,7 @@ detect_all() {
     local claude=$(detect_claude_code)
     local cursor=$(detect_cursor)
     local opencode=$(detect_opencode)
+    local codex=$(detect_codex)
     local obsidian=$(detect_obsidian)
     local claudian=$(detect_claudian)
 
@@ -92,12 +106,14 @@ detect_all() {
         --arg claude "$claude" \
         --arg cursor "$cursor" \
         --arg opencode "$opencode" \
+        --arg codex "$codex" \
         --arg obsidian "$obsidian" \
         --arg claudian "$claudian" \
         '{
             "claude-code": $claude,
             "cursor": $cursor,
             "opencode": $opencode,
+            "codex": $codex,
             "obsidian": $obsidian,
             "claudian": $claudian
         }'
@@ -113,6 +129,7 @@ print_detection_result() {
     local claude=$(echo "$result" | jq -r '.["claude-code"]')
     local cursor=$(echo "$result" | jq -r '.cursor')
     local opencode=$(echo "$result" | jq -r '.opencode')
+    local codex=$(echo "$result" | jq -r '.codex')
     local obsidian=$(echo "$result" | jq -r '.obsidian')
     local claudian=$(echo "$result" | jq -r '.claudian')
 
@@ -132,6 +149,12 @@ print_detection_result() {
         echo "  ✅ OpenCode"
     else
         echo "  ⚠️  OpenCode (未安装)"
+    fi
+
+    if [ "$codex" = "installed" ]; then
+        echo "  ✅ Codex"
+    else
+        echo "  ⚠️  Codex (未安装)"
     fi
 
     if [ "$obsidian" = "installed" ]; then

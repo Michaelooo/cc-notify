@@ -2,7 +2,7 @@
 
 ## 1. Stop Hook 触发时机问题
 
-**状态**: 已确认 (Claude Code 官方行为)
+**状态**: 已确认 (Claude Code 官方行为，模板已规避)
 
 **描述**:
 `Stop` hook 会在每次 Claude 响应后触发，而不仅仅是任务完成时。这会导致在多轮对话中收到多次"对话结束"通知。
@@ -11,9 +11,11 @@
 
 **官方 Issue**: [anthropics/claude-code#15250](https://github.com/anthropics/claude-code/issues/15250)
 
-**解决方案**:
-- 使用 `SessionEnd` hook 替代 `Stop` hook 来接收会话结束通知
-- 使用 `TaskCompleted` hook 来接收任务完成通知（注意：仅适用于 multi-agent workflows 和 shared task list）
+**当前处理方式**:
+- 默认模板不再使用 `Stop` 发“任务完成/对话结束”通知
+- 改用 `SessionEnd` 表示真正的会话结束
+- `TaskCompleted` 仅用于 task / multi-agent 工作流中的任务完成
+- 安装脚本会替换旧版 cc-notify 写入的 `Stop` 配置，避免历史误配置残留
 
 **相关配置**:
 ```json
@@ -54,6 +56,24 @@
 已在 v1.0.0 后的版本中移除 `ciphertext` 字段。
 
 **相关提交**: 17854ef
+
+---
+
+## 4. Codex Hooks 仍属实验能力
+
+**状态**: 官方限制
+
+**描述**:
+Codex 官方 hooks 当前仍是 experimental，事件面也比 Claude Code 更窄。它没有直接暴露 `permission_prompt` / `idle_prompt` 这类显式“正在等你”的事件，因此 cc-notify 只能基于 `Stop.last_assistant_message` 和 `PostToolUse(Bash)` 做 best-effort 判断。
+
+**影响**:
+- Codex 的“需要你介入”提醒准确率低于 Claude Code
+- 某些等待用户确认的场景无法像 Claude Code 那样被精确捕获
+
+**当前处理方式**:
+- 对 `Stop` 做“是否在等你回复”的启发式判断
+- 只对明显需要人工处理的 Bash 错误发高优通知
+- 在 README 中明确说明这是能力边界，不把 Codex 支持描述成和 Claude 等价
 
 ---
 
