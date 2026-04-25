@@ -16,6 +16,7 @@ EVENT_SUBTYPE=""
 CONFIG_FILE="$HOME/.cc-notify/config.json"
 LOCK_DIR="$HOME/.cc-notify/locks"
 DEDUP_WINDOW="${CC_NOTIFY_DEDUP_WINDOW:-}"
+STOP_DEDUP_WINDOW="${CC_NOTIFY_STOP_DEDUP_WINDOW:-150}"
 RECHECK_SECONDS="${CC_NOTIFY_RECHECK_SECONDS:-5}"
 
 [ "${CC_NOTIFY_DEBUG:-0}" = "1" ] && DEBUG="true" || DEBUG="false"
@@ -48,6 +49,9 @@ HOOK_ELICITATION_URL=""
 HOOK_TOOL_RESPONSE_RAW=""
 HOOK_TOOL_RESPONSE_TEXT=""
 HOOK_TOOL_EXIT_CODE=""
+HOOK_SESSION_ID=""
+HOOK_CWD=""
+HOOK_TRANSCRIPT_PATH=""
 
 debug_log() {
     [ "$DEBUG" = "true" ] && echo "[DEBUG] $1" >&2
@@ -365,7 +369,7 @@ build_hook_dedup_subject() {
             join_lines "$HOOK_TOOL_NAME" "$HOOK_ERROR" "$HOOK_TOOL_EXIT_CODE" "$HOOK_TOOL_RESPONSE_TEXT"
             ;;
         Stop)
-            join_lines "$HOOK_LAST_ASSISTANT_MESSAGE"
+            join_lines "${HOOK_SESSION_ID:-}|${HOOK_CWD:-}|${SOURCE}"
             ;;
         *)
             join_lines "$HOOK_TITLE" "$HOOK_MESSAGE" "$HOOK_ERROR" "$HOOK_REASON"
@@ -392,6 +396,11 @@ try_acquire_lock() {
         return 0
     fi
 
+    local effective_window="$DEDUP_WINDOW"
+    if [ "$EVENT_NAME" = "Stop" ]; then
+        effective_window="$STOP_DEDUP_WINDOW"
+    fi
+
     local hash
     hash=$(get_notify_hash)
     local lock_file="$LOCK_DIR/${hash}.lock"
@@ -410,7 +419,7 @@ try_acquire_lock() {
     lock_time=$(cat "$lock_file/timestamp" 2>/dev/null || echo "0")
     local age=$((now - lock_time))
 
-    if [ "$age" -gt "$DEDUP_WINDOW" ]; then
+    if [ "$age" -gt "$effective_window" ]; then
         rm -rf "$lock_file" 2>/dev/null
         if mkdir "$lock_file" 2>/dev/null; then
             echo "$now" > "$lock_file/timestamp"
@@ -456,8 +465,12 @@ send_notification() {
         source_info="${DEVICE_NAME} · ${terminal_name}"
     fi
 
+    local session_suffix=""
+    if [ -n "${HOOK_SESSION_ID:-}" ]; then
+        session_suffix=" · ${HOOK_SESSION_ID:0:8}"
+    fi
     local final_body
-    final_body=$(join_lines "$BODY" "📍 ${source_info}")
+    final_body=$(join_lines "$BODY" "📍 ${source_info}${session_suffix}")
 
     local level=""
     case "$PRIORITY" in
@@ -717,6 +730,32 @@ extract_permission_target() {
     [ -n "$HOOK_TOOL_NAME" ] && printf '工具: %s' "$HOOK_TOOL_NAME"
 }
 
+extract_project_label() {
+    local cwd="${HOOK_CWD:-$PWD}"
+    [ -n "$cwd" ] || return 1
+    basename "$cwd"
+}
+
+extract_last_assistant_message() {
+    local path="$1"
+    [ -n "$path" ] || return
+    [ -f "$path" ] && [ -r "$path" ] || return
+
+    local msg
+    msg=$(tail -n 100 "$path" | jq -rR '
+        try fromjson |
+        select(.type=="assistant") |
+        [(.message.content // [])[] | select(.type=="text") | .text] |
+        select(length > 0) |
+        join(" ")
+    ' 2>/dev/null | tail -n 1)
+
+    [ -n "$msg" ] || return
+
+    msg=$(printf '%s' "$msg" | tr '\n' ' ')
+    truncate_text "$msg" 80
+}
+
 looks_user_actionable_error() {
     local text
     text=$(printf '%s %s %s %s' "$HOOK_ERROR" "$HOOK_MESSAGE" "$HOOK_REASON" "$HOOK_TOOL_RESPONSE_TEXT" | tr '[:upper:]' '[:lower:]')
@@ -822,6 +861,9 @@ parse_hook_context() {
     HOOK_IS_INTERRUPT=$(json_get '.is_interrupt')
     HOOK_ELICITATION_SOURCE=$(json_get '.source')
     HOOK_ELICITATION_URL=$(json_get '.link')
+    HOOK_SESSION_ID=$(json_get '.session_id')
+    HOOK_CWD=$(json_get '.cwd')
+    HOOK_TRANSCRIPT_PATH=$(json_get '.transcript_path')
 
     [ "$HOOK_IS_INTERRUPT" = "true" ] || HOOK_IS_INTERRUPT="false"
 
@@ -908,10 +950,13 @@ classify_hook_event() {
                 "$(truncate_text "${HOOK_MESSAGE:-$HOOK_TITLE}" 180)")
             ;;
         TaskCompleted)
+            local tc_project_label
+            tc_project_label=$(extract_project_label)
             EVENT_KIND="terminal"
             PRIORITY="normal"
             TITLE="🎉 任务已完成"
             BODY=$(join_lines \
+                "$( [ -n "$tc_project_label" ] && printf '📁 %s' "$tc_project_label" )" \
                 "${label} 完成了一个任务" \
                 "$(truncate_text "$HOOK_TASK_SUBJECT" 180)")
             ;;
@@ -922,10 +967,13 @@ classify_hook_event() {
                     SKIP_REASON="用户主动结束或切换会话: $HOOK_REASON"
                     ;;
                 *)
+                    local se_project_label
+                    se_project_label=$(extract_project_label)
                     EVENT_KIND="terminal"
                     PRIORITY="low"
                     TITLE="✅ 会话已结束"
                     BODY=$(join_lines \
+                        "$( [ -n "$se_project_label" ] && printf '📁 %s' "$se_project_label" )" \
                         "${label} 会话已经结束" \
                         "$( [ -n "$HOOK_REASON" ] && printf '原因: %s' "$HOOK_REASON" )")
                     ;;
@@ -975,20 +1023,30 @@ classify_hook_event() {
             fi
             ;;
         Stop)
+            local stop_project_label
+            stop_project_label=$(extract_project_label)
             if [ "$SOURCE" = "codex" ] && message_needs_user_reply "$HOOK_LAST_ASSISTANT_MESSAGE"; then
                 EVENT_KIND="intervention"
                 PRIORITY="high"
                 TITLE="⏸️ Codex 正在等你回复"
                 BODY=$(join_lines \
+                    "$( [ -n "$stop_project_label" ] && printf '📁 %s' "$stop_project_label" )" \
                     "Codex 当前停在等待你回复的状态" \
                     "$(truncate_text "$HOOK_LAST_ASSISTANT_MESSAGE" 180)")
             else
+                local stop_last_msg=""
+                if [ "$SOURCE" = "claude-code" ]; then
+                    stop_last_msg=$(extract_last_assistant_message "$HOOK_TRANSCRIPT_PATH")
+                elif [ "$SOURCE" = "codex" ]; then
+                    stop_last_msg=$(truncate_text "$HOOK_LAST_ASSISTANT_MESSAGE" 80)
+                fi
                 EVENT_KIND="terminal"
                 PRIORITY="low"
                 TITLE="✅ 本轮响应结束"
                 BODY=$(join_lines \
+                    "$( [ -n "$stop_project_label" ] && printf '📁 %s' "$stop_project_label" )" \
                     "${label} 本轮响应已结束" \
-                    "$(truncate_text "$HOOK_LAST_ASSISTANT_MESSAGE" 180)")
+                    "$( [ -n "$stop_last_msg" ] && printf '💬 %s' "$stop_last_msg" )")
             fi
             ;;
         *)

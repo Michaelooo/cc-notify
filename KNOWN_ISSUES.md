@@ -2,27 +2,29 @@
 
 ## 1. Stop Hook 触发时机问题
 
-**状态**: 已确认 (Claude Code 官方行为，模板已规避)
+**状态**: 已确认并采用去重方案缓解 (Claude Code 官方行为)
 
 **描述**:
-`Stop` hook 会在每次 Claude 响应后触发，而不仅仅是任务完成时。这会导致在多轮对话中收到多次"对话结束"通知。
+`Stop` hook 会在每次 Claude 响应后触发，而不仅仅是任务完成时。这会导致在多轮对话中连续触发多次 Stop。
 
 **影响版本**: 所有版本
 
 **官方 Issue**: [anthropics/claude-code#15250](https://github.com/anthropics/claude-code/issues/15250)
 
 **当前处理方式**:
-- 默认模板不再使用 `Stop` 发“任务完成/对话结束”通知
-- 改用 `SessionEnd` 表示真正的会话结束
-- `TaskCompleted` 仅用于 task / multi-agent 工作流中的任务完成
-- 安装脚本会替换旧版 cc-notify 写入的 `Stop` 配置，避免历史误配置残留
+- 重新订阅 `Stop`（`low` 优先级），以确保单 agent 普通对话完成也能收到通知
+- Stop 事件使用独立的去重窗口（默认 150 秒，可通过 `CC_NOTIFY_STOP_DEDUP_WINDOW` 调整），同一会话（session_id + cwd）在窗口内只发一条
+- Stop 指纹由 `session_id|cwd|source` 组成，而非消息内容，确保同会话连续触发时合并为一条
+- `SessionEnd` 作为补充兜底（用户显式退出时仍会触发）
+- `TaskCompleted` 用于 multi-agent 工作流中的任务完成
 
 **相关配置**:
 ```json
 {
-  "hooks": {
-    "TaskCompleted": [...],  // 任务完成时触发
-    "SessionEnd": [...]      // 会话结束时触发
+  “hooks”: {
+    “Stop”: [...],           // 每轮响应结束，150s 去重窗口聚合
+    “TaskCompleted”: [...],  // 任务完成时触发（multi-agent）
+    “SessionEnd”: [...]      // 会话结束时触发
   }
 }
 ```

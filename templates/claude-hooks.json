@@ -66,6 +66,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.cc-notify/bin/smart-notify.sh --source claude-code",
+            "async": true
+          }
+        ]
+      }
     ]
   }
 }
