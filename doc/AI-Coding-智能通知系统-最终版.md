@@ -102,7 +102,7 @@ end tell
 
 ```bash
 #!/bin/bash
-BARK_KEY="${BARK_KEY:-H9Cs47PmdcJPACbLzvuNmC}"
+BARK_KEY="${BARK_KEY:-YOUR_KEY}"
 BARK_URL="https://api.day.app"
 
 TITLE="${1:-AI通知}"
@@ -236,7 +236,7 @@ exit 0
 ### 5.1 安装 Bark
 
 1. App Store 搜索 "Bark"
-2. 复制你的 Key（已配置: `H9Cs47PmdcJPACbLzvuNmC`）
+2. 复制你的 Key（已配置: `YOUR_KEY`）
 
 ### 5.2 一键安装
 
@@ -347,7 +347,7 @@ JSON
 echo $BARK_KEY
 
 # 2. 手动测试
-curl "https://api.day.app/H9Cs47PmdcJPACbLzvuNmC/测试/内容"
+curl "https://api.day.app/YOUR_KEY/测试/内容"
 
 # 3. 检查脚本日志
 ~/.claude/hooks/smart-notify.sh "测试" "内容" "high" 2>&1
