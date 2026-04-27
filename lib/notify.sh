@@ -33,6 +33,8 @@ BARK_URL=""
 DEVICE_NAME=""
 DEDUP_ENABLED="true"
 SMART_DETECT_ENABLED="true"
+SESSIONS_DIR="$HOME/.cc-notify/sessions"
+WINDOW_FOCUS_DETECTION="${CC_NOTIFY_WINDOW_FOCUS:-1}"
 
 HOOK_EVENT_NAME=""
 NOTIFICATION_TYPE=""
@@ -514,6 +516,133 @@ send_notification() {
     debug_log "响应: $response"
 }
 
+session_index_path() {
+    local safe_id
+    safe_id=$(printf '%s' "$1" | tr -d '/' | head -c 128)
+    printf '%s/%s.env' "$SESSIONS_DIR" "$safe_id"
+}
+
+write_session_index() {
+    [ -n "$HOOK_SESSION_ID" ] || return
+    [ -d "$SESSIONS_DIR" ] || mkdir -p "$SESSIONS_DIR" 2>/dev/null || return
+
+    local path tmp hook_tty
+    path=$(session_index_path "$HOOK_SESSION_ID")
+    tmp="${path}.tmp.$$"
+
+    local _pid=$$ _tty
+    while [[ "$_pid" =~ ^[0-9]+$ ]] && [ "$_pid" -gt 1 ]; do
+        _tty=$(ps -o tty= -p "$_pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$_tty" ] && [ "$_tty" != "??" ]; then
+            [[ "$_tty" != /dev/* ]] && _tty="/dev/$_tty"
+            hook_tty="$_tty"
+            break
+        fi
+        _pid=$(ps -o ppid= -p "$_pid" 2>/dev/null | tr -d ' ')
+        [[ "$_pid" =~ ^[0-9]+$ ]] || break
+    done
+
+    {
+        printf 'SESSION_ID=%s\n' "$HOOK_SESSION_ID"
+        printf 'SOURCE=%s\n' "$SOURCE"
+        printf 'CWD=%s\n' "$HOOK_CWD"
+        printf 'TERM_PROGRAM=%s\n' "${TERM_PROGRAM:-}"
+        printf 'ITERM_SESSION_ID=%s\n' "${ITERM_SESSION_ID:-}"
+        printf 'TERM_SESSION_ID=%s\n' "${TERM_SESSION_ID:-}"
+        printf 'HOOK_TTY=%s\n' "$hook_tty"
+        printf 'UPDATED_AT=%s\n' "$(date +%s 2>/dev/null)"
+    } > "$tmp" && mv "$tmp" "$path"
+
+    find "$SESSIONS_DIR" -maxdepth 1 -name '*.env' -mtime +7 -delete 2>/dev/null || true
+    debug_log "会话索引已写入: $path"
+}
+
+delete_session_index() {
+    [ -n "$HOOK_SESSION_ID" ] || return
+    local path
+    path=$(session_index_path "$HOOK_SESSION_ID")
+    [ -f "$path" ] && rm -f "$path" && debug_log "会话索引已删除: $path"
+}
+
+get_focused_window_identity() {
+    local bundle_id="$1"
+    case "$bundle_id" in
+        com.googlecode.iterm2)
+            osascript -e '
+tell application "iTerm2"
+    try
+        set s to current session of current window
+        return (unique id of s) & tab & (tty of s)
+    on error
+        return ""
+    end try
+end tell
+' 2>/dev/null
+            ;;
+        com.apple.Terminal)
+            local ttys
+            ttys=$(osascript -e 'tell application "Terminal" to return tty of selected tab of front window' 2>/dev/null | tr -d ' ')
+            [ -n "$ttys" ] && printf 'TTY\t%s' "$ttys"
+            ;;
+    esac
+}
+
+is_focused_session_window() {
+    local app_info="$1"
+    [ -n "$HOOK_SESSION_ID" ] || { printf 'unknown'; return; }
+
+    local index_path
+    index_path=$(session_index_path "$HOOK_SESSION_ID")
+    [ -f "$index_path" ] || { printf 'unknown'; return; }
+
+    local bundle_id idx_iterm_session_id idx_tty
+    bundle_id=$(printf '%s' "$app_info" | cut -f3)
+    idx_iterm_session_id=$(grep '^ITERM_SESSION_ID=' "$index_path" | cut -d= -f2-)
+    idx_tty=$(grep '^HOOK_TTY=' "$index_path" | cut -d= -f2-)
+
+    local focused_identity
+    focused_identity=$(get_focused_window_identity "$bundle_id")
+    debug_log "前台窗口标识: [$focused_identity]"
+
+    case "$bundle_id" in
+        com.googlecode.iterm2)
+            local focused_uuid focused_tty idx_uuid
+            focused_uuid=$(printf '%s' "$focused_identity" | cut -f1)
+            focused_tty=$(printf '%s' "$focused_identity" | cut -f2)
+            [[ "$idx_iterm_session_id" == *:* ]] && idx_uuid=$(printf '%s' "$idx_iterm_session_id" | cut -d: -f2-)
+            if [ -n "$idx_uuid" ] && [ -n "$focused_uuid" ] && [ "$focused_uuid" = "$idx_uuid" ]; then
+                debug_log "iTerm2 UUID 匹配: $idx_uuid"
+                printf 'match'; return
+            fi
+            if [ -n "$idx_tty" ] && [ -n "$focused_tty" ] && [ "$idx_tty" = "$focused_tty" ]; then
+                debug_log "iTerm2 TTY 匹配: $idx_tty"
+                printf 'match'; return
+            fi
+            if [ -n "$focused_uuid" ] || [ -n "$focused_tty" ]; then
+                debug_log "iTerm2 窗口不匹配"
+                printf 'mismatch'; return
+            fi
+            printf 'unknown'
+            ;;
+        com.apple.Terminal)
+            local focused_tty
+            focused_tty=$(printf '%s' "$focused_identity" | cut -f2)
+            if [ -n "$idx_tty" ] && [ -n "$focused_tty" ]; then
+                if [ "$idx_tty" = "$focused_tty" ]; then
+                    debug_log "Terminal.app TTY 匹配: $idx_tty"
+                    printf 'match'; return
+                fi
+                debug_log "Terminal.app TTY 不匹配: idx=$idx_tty front=$focused_tty"
+                printf 'mismatch'; return
+            fi
+            printf 'unknown'
+            ;;
+        *)
+            printf 'unknown'
+            ;;
+    esac
+}
+
 check_screen_locked() {
     python3 -c "
 import Quartz
@@ -545,7 +674,7 @@ end tell
 ' 2>/dev/null
 }
 
-is_focused_app() {
+is_focused_terminal() {
     local app_info="$1"
     local proc_name proc_path bundle_id
 
@@ -584,6 +713,17 @@ is_focused_app() {
             ;;
     esac
 
+    return 1
+}
+
+is_focused_editor() {
+    local app_info="$1"
+    local proc_name proc_path bundle_id
+
+    proc_name=$(printf '%s' "$app_info" | cut -f1)
+    proc_path=$(printf '%s' "$app_info" | cut -f2)
+    bundle_id=$(printf '%s' "$app_info" | cut -f3)
+
     if [[ -n "$proc_path" ]]; then
         case "$proc_path" in
             *"/Cursor.app"|*"/Code.app"|*"/Visual Studio Code.app"| \
@@ -591,7 +731,6 @@ is_focused_app() {
             *"/GoLand.app"|*"/CLion.app"|*"/Android Studio"*| \
             *"/Xcode.app"|*"/Sublime"*|*"/Atom.app"|*"/Zed.app"| \
             *"/Obsidian.app")
-                debug_log "匹配编辑器应用（路径）: $proc_path"
                 return 0
                 ;;
         esac
@@ -602,7 +741,6 @@ is_focused_app() {
             com.todesktop.*|com.microsoft.VSCode|com.jetbrains.*| \
             com.apple.dt.Xcode|com.sublimetext.*|com.github.atom| \
             dev.zed.Zed|md.obsidian)
-                debug_log "匹配编辑器应用（Bundle ID）: $bundle_id"
                 return 0
                 ;;
         esac
@@ -621,20 +759,33 @@ is_focused_app() {
        [[ "$proc_name" == *"Atom"* ]] || \
        [[ "$proc_name" == *"Zed"* ]] || \
        [[ "$proc_name" == *"Obsidian"* ]]; then
-        debug_log "匹配编辑器应用（进程名）: $proc_name"
         return 0
     fi
 
     if [[ "$proc_name" == "Electron" ]] && [[ -n "$proc_path" ]]; then
         case "$proc_path" in
             *Cursor*|*Code*|*VSCode*|*VSCodium*)
-                debug_log "Electron 进程匹配到编辑器: $proc_path"
                 return 0
                 ;;
         esac
     fi
 
     return 1
+}
+
+_should_suppress_for_terminal() {
+    local app_info="$1"
+    if is_truthy "$WINDOW_FOCUS_DETECTION" && [ -n "$HOOK_SESSION_ID" ]; then
+        local result
+        result=$(is_focused_session_window "$app_info")
+        debug_log "窗口精确匹配结果: $result"
+        case "$result" in
+            match)    return 0 ;;
+            mismatch) return 1 ;;
+            *)        return 0 ;;
+        esac
+    fi
+    return 0
 }
 
 should_notify() {
@@ -690,18 +841,22 @@ should_notify() {
             return 0
         fi
 
-        if is_focused_app "$app_info"; then
+        if is_focused_terminal "$app_info" && _should_suppress_for_terminal "$app_info"; then
             debug_log "重检后用户仍在关注，不发送"
             return 1
         fi
 
-        debug_log "重检后用户已离开，发送通知"
+        debug_log "重检后用户已离开或窗口不匹配，发送通知"
         return 0
     fi
 
-    if is_focused_app "$app_info"; then
-        debug_log "用户在关注中，不发送通知"
-        return 1
+    if is_focused_terminal "$app_info"; then
+        if _should_suppress_for_terminal "$app_info"; then
+            debug_log "用户在关注中，不发送通知"
+            return 1
+        fi
+        debug_log "前台是终端但不是任务所在窗口，发送通知"
+        return 0
     fi
 
     debug_log "用户不在关注，发送通知"
@@ -873,6 +1028,9 @@ parse_hook_context() {
 
     debug_log "事件: $EVENT_NAME"
     [ -n "$EVENT_SUBTYPE" ] && debug_log "子类型: $EVENT_SUBTYPE"
+
+    write_session_index
+    [ "$HOOK_EVENT_NAME" = "SessionEnd" ] && delete_session_index
 }
 
 classify_hook_event() {
