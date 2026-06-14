@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ccbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22272e"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#ccbg)"/>
+  <!-- 终端窗口 -->
+  <rect x="20" y="34" width="78" height="60" rx="9" fill="#0d1117" stroke="#30363d" stroke-width="1.5"/>
+  <circle cx="30" cy="44" r="3" fill="#f85149"/>
+  <circle cx="40" cy="44" r="3" fill="#d29922"/>
+  <circle cx="50" cy="44" r="3" fill="#3fb950"/>
+  <!-- 提示符 >_ -->
+  <text x="28" y="78" font-family="ui-monospace, Menlo, monospace" font-size="18" font-weight="700" fill="#3fb950">&gt;_</text>
+  <!-- 光标 -->
+  <rect x="56" y="67" width="9" height="5" rx="1.5" fill="#3fb950" opacity="0.55"/>
+  <!-- 右上角通知徽章 -->
+  <circle cx="98" cy="38" r="15" fill="#f85149" stroke="#0d1117" stroke-width="3"/>
+  <rect x="96.4" y="30.5" width="3.2" height="6.5" rx="1.6" fill="#fff"/>
+  <circle cx="98" cy="41" r="1.9" fill="#fff"/>
+</svg>
