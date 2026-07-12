@@ -644,14 +644,14 @@ is_focused_session_window() {
 }
 
 check_screen_locked() {
-    python3 -c "
-import Quartz
-try:
-    session = Quartz.CGSessionCopyCurrentDictionary()
-    print('1' if session.get('OnConsoleKey') == 0 else '0')
-except Exception:
-    print('error')
-" 2>/dev/null
+    # ScreenSaverEngine 运行即锁屏/屏保（macOS 13+）。替代原 python+Quartz 方案：
+    # 零依赖、~0.02s；原方案在 Quartz 缺失时返回 error（智能检测形同虚设），
+    # 且 pyobjc import 约 0.3-0.5s 会吃掉 SessionEnd 的 1.5s 超时预算。
+    if pgrep -xq ScreenSaverEngine; then
+        echo "1"
+    else
+        echo "0"
+    fi
 }
 
 get_frontmost_app_info() {

@@ -1,0 +1,38 @@
+flowchart LR
+    subgraph AI_Tools["AI 编程工具"]
+        C["Claude Code"]
+        Cu["Cursor"]
+        O["OpenCode"]
+        Co["Codex"]
+    end
+
+    subgraph Hooks["事件接入层"]
+        CH["~/.claude/settings.json"]
+        CUH["~/.cursor/hooks.json"]
+        OH["~/.config/opencode/plugins/cc-notify.js"]
+        COH["~/.codex/hooks.json"]
+    end
+
+    subgraph Core["核心通知层"]
+        SN["~/.cc-notify/bin/smart-notify.sh"]
+        CFG["~/.cc-notify/config.json"]
+    end
+
+    subgraph Push["推送通道"]
+        B["Bark 推送服务"]
+        P["iOS 通知"]
+    end
+
+    C -->|hooks| CH
+    Cu -->|hooks| CUH
+    O -->|plugin| OH
+    Co -->|hooks| COH
+
+    CH -->|触发| SN
+    CUH -->|触发| SN
+    OH -->|触发| SN
+    COH -->|触发| SN
+
+    CFG -->|读取配置| SN
+    SN -->|POST JSON| B
+    B -->|APNs| P
