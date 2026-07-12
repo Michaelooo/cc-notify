@@ -1,82 +1,61 @@
 <mxfile host="app.diagrams.net" agent="cc-notify" version="30.2.6">
   <diagram id="window-focus" name="窗口聚焦机制">
-    <mxGraphModel dx="1400" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="620" math="0" shadow="0">
+    <mxGraphModel dx="800" dy="520" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="720" pageHeight="490" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <mxCell id="phase1" value="① 贴标签 · 每次 hook 触发（write_session_index）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="20" y="30" width="640" height="350" as="geometry" />
+        <mxCell id="bg1" value="① 贴标签 · 每次 hook 触发（write_session_index）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f6f8fb;strokeColor=#d0d7de;arcSize=6;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#445;spacingTop=6;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="10" y="20" width="700" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="hook" value="hook 触发&lt;br&gt;(带 session_id)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="50" y="80" width="130" height="60" as="geometry" />
+        <mxCell id="hook" value="hook 触发&lt;br&gt;(带 session_id)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="34" y="80" width="130" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="tty" value="沿父进程链 ppid&lt;br&gt;找到终端 &lt;b&gt;tty&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="230" y="70" width="170" height="60" as="geometry" />
+        <mxCell id="collectid" value="沿父进程链 ppid 找 tty&lt;br&gt;+ 读 ITERM_SESSION_ID (UUID)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf2fb;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="214" y="80" width="200" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="uuid" value="读环境变量&lt;br&gt;ITERM_SESSION_ID (&lt;b&gt;UUID&lt;/b&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="230" y="150" width="170" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="env" value="~/.cc-notify/sessions/&lt;id&gt;.env&lt;br&gt;&lt;b&gt;HOOK_TTY&lt;/b&gt; · &lt;b&gt;ITERM_SESSION_ID&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;size=10;" vertex="1" parent="1">
-          <mxGeometry x="470" y="95" width="170" height="100" as="geometry" />
-        </mxCell>
-        <mxCell id="note1" value="相当于给"发起任务的这个窗口"贴一张身份证" style="text;html=1;align=center;fontSize=10;fontColor=#888;" vertex="1" parent="1">
-          <mxGeometry x="40" y="240" width="600" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="note1b" value="SessionEnd 时删除这张标签（保持整洁）" style="text;html=1;align=center;fontSize=10;fontColor=#888;" vertex="1" parent="1">
-          <mxGeometry x="40" y="265" width="600" height="30" as="geometry" />
+        <mxCell id="env" value="sessions/{id}.env&lt;br&gt;&lt;b&gt;HOOK_TTY&lt;/b&gt; · &lt;b&gt;ITERM_SESSION_ID&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="470" y="78" width="210" height="64" as="geometry" />
         </mxCell>
 
-        <mxCell id="phase2" value="② 对暗号 · 发通知前（is_focused_session_window）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="720" y="30" width="660" height="350" as="geometry" />
+        <mxCell id="bg2" value="② 对暗号 · 发通知前（is_focused_session_window）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf6f9;strokeColor=#d0d7de;arcSize=6;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#445;spacingTop=6;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="10" y="210" width="700" height="250" as="geometry" />
         </mxCell>
-        <mxCell id="read" value="读回 .env&lt;br&gt;拿到&lt;b&gt;发起窗口&lt;/b&gt;标识" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="750" y="80" width="160" height="60" as="geometry" />
+        <mxCell id="read" value="读 .env&lt;br&gt;拿发起窗口标识" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf2fb;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="34" y="270" width="170" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="query" value="osascript 问前台终端&lt;br&gt;&lt;b&gt;当前前台窗口&lt;/b&gt;的 UUID/TTY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="750" y="160" width="160" height="60" as="geometry" />
+        <mxCell id="query" value="osascript 问前台终端&lt;br&gt;当前窗口的 UUID / TTY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf2fb;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="34" y="345" width="170" height="50" as="geometry" />
         </mxCell>
         <mxCell id="cmp" value="比对" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="970" y="110" width="120" height="80" as="geometry" />
+          <mxGeometry x="270" y="300" width="110" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="match" value="✅ &lt;b&gt;match&lt;/b&gt;&lt;br&gt;同一个窗口&lt;br&gt;&lt;b&gt;→ 不发送&lt;/b&gt;（你在看）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1140" y="70" width="200" height="70" as="geometry" />
+        <mxCell id="matchres" value="⛔ &lt;b&gt;match&lt;/b&gt; 同一窗口&lt;br&gt;→ 不发送（你在看）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="450" y="265" width="220" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="mis" value="✅ &lt;b&gt;mismatch&lt;/b&gt;&lt;br&gt;切到别的窗口&lt;br&gt;&lt;b&gt;→ 发送&lt;/b&gt;（你没在看）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1140" y="160" width="200" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="note2" value="iTerm 先比 UUID（最准），没有再比 TTY 兜底 · 系统终端只比 TTY" style="text;html=1;align=center;fontSize=10;fontColor=#888;" vertex="1" parent="1">
-          <mxGeometry x="730" y="250" width="640" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="note2b" value="这就是"从 App 级精确到窗口级"的关键" style="text;html=1;align=center;fontSize=10;fontColor=#888;" vertex="1" parent="1">
-          <mxGeometry x="730" y="275" width="640" height="30" as="geometry" />
+        <mxCell id="mis" value="✅ &lt;b&gt;mismatch&lt;/b&gt; 切到别的窗口&lt;br&gt;→ 发送（你没在看）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="450" y="345" width="220" height="55" as="geometry" />
         </mxCell>
 
-        <mxCell id="e_h_tty" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="hook" target="tty">
+        <mxCell id="e_h_f" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#6c8ebf;" edge="1" parent="1" source="hook" target="collectid">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_h_uuid" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="hook" target="uuid">
+        <mxCell id="e_f_env" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#6c8ebf;" edge="1" parent="1" source="collectid" target="env">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_tty_env" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="tty" target="env">
+        <mxCell id="e_env_read" value="读回" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#9673a6;dashed=1;labelBackgroundColor=#ffffff;fontSize=10;" edge="1" parent="1" source="env" target="read">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_uuid_env" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="uuid" target="env">
+        <mxCell id="e_r_c" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#6c8ebf;" edge="1" parent="1" source="read" target="cmp">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_env_read" value="读回" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#9673a6;labelBackgroundColor=#ffffff;fontSize=10;dashed=1;" edge="1" parent="1" source="env" target="read">
+        <mxCell id="e_q_c" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#6c8ebf;" edge="1" parent="1" source="query" target="cmp">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_read_cmp" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="read" target="cmp">
+        <mxCell id="e_c_match" value="一致" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cmp" target="matchres">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_query_cmp" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#444;" edge="1" parent="1" source="query" target="cmp">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_cmp_match" value="一致" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#b85450;labelBackgroundColor=#ffffff;fontSize=11;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cmp" target="match">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_cmp_mis" value="不一致" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=11;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cmp" target="mis">
+        <mxCell id="e_c_mis" value="不一致" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#82b366;labelBackgroundColor=#ffffff;fontSize=11;" edge="1" parent="1" source="cmp" target="mis">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>

@@ -51,7 +51,7 @@ AI Coding 里模型经常需要你**当场介入**：执行命令等你点允许
 
 ## 系统架构
 
-![系统架构](cc-notify-arch.png)
+![系统架构](cc-notify-arch.drawio.png)
 
 各 AI 工具的 hook 配置指向同一个 `smart-notify.sh`，它读完事件上下文、做完上面的智能检测，再通过 Bark 推送到 iOS。
 
