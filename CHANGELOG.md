@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- npm 分发渠道：`npm install -g @michaelooo/cc-notify` 后运行 `cc-notify` 完成安装配置；tag 触发 GitHub Actions 经 Trusted Publishing（OIDC）自动发版
+- 脚本版本号改为从 package.json 读取，发版只改一处
+
 ### Changed
 - Claude Code / OpenCode 默认 hooks 改为基于精确事件分类，不再把 `Stop` 当成任务完成
 - 默认移除 `PostToolUseFailure` 的泛化错误提醒，减少过程态误报

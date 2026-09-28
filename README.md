@@ -87,9 +87,15 @@ curl -fsSL https://raw.githubusercontent.com/USER/cc-notify/main/install.sh | ba
 git clone https://github.com/USER/cc-notify.git
 cd cc-notify
 ./install.sh
+
+# 方式三：npm 全局安装
+npm install -g @michaelooo/cc-notify
+cc-notify
 ```
 
 安装脚本会自动检测已安装的 AI 工具，提供交互式多选界面（装了 `fzf` 或 `gum` 体验更好）。
+
+npm 方式升级：`npm update -g @michaelooo/cc-notify && cc-notify`（重跑一次刷新 `~/.cc-notify` 本地副本和 hooks）。
 
 ### 3. 配置 Bark
 

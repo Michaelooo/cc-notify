@@ -1,0 +1,38 @@
+{
+  "name": "@michaelooo/cc-notify",
+  "version": "1.0.0",
+  "description": "AI 写代码需要你介入时立刻推 Bark 通知；你正盯着屏幕时安静，离开时才响",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Michaelooo/cc-notify.git"
+  },
+  "bin": {
+    "cc-notify": "bin/cc-notify.sh"
+  },
+  "files": [
+    "bin",
+    "install.sh",
+    "lib",
+    "templates",
+    "README.md",
+    "CHANGELOG.md",
+    "KNOWN_ISSUES.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "claude-code",
+    "cursor",
+    "codex",
+    "opencode",
+    "bark",
+    "notification",
+    "hooks",
+    "cli"
+  ]
+}

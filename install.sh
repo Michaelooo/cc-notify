@@ -4,11 +4,11 @@
 
 set -e
 
-# 脚本版本
-VERSION="1.0.0"
-
 # 获取脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 脚本版本：以 package.json 为单一来源（npm 发版只改那边），无 node 环境时回退
+VERSION="$(node -p "require('$SCRIPT_DIR/package.json').version" 2>/dev/null || echo 1.0.0)"
 
 # 加载公共函数
 source "$SCRIPT_DIR/lib/common.sh" 2>/dev/null || {
