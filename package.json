@@ -1,6 +1,6 @@
 {
   "name": "@michaelooo/cc-notify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI 写代码需要你介入时立刻推 Bark 通知；你正盯着屏幕时安静，离开时才响",
   "license": "MIT",
   "repository": {
