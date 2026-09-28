@@ -80,17 +80,17 @@ AI Coding 里模型经常需要你**当场介入**：执行命令等你点允许
 ### 2. 安装
 
 ```bash
-# 方式一：curl 一键安装（推荐，发布后把 USER/cc-notify 换成你的仓库地址）
-curl -fsSL https://raw.githubusercontent.com/USER/cc-notify/main/install.sh | bash
-
-# 方式二：本地安装
-git clone https://github.com/USER/cc-notify.git
-cd cc-notify
-./install.sh
-
-# 方式三：npm 全局安装
+# 方式一：npm 全局安装（推荐，升级方便）
 npm install -g @michaelooo/cc-notify
 cc-notify
+
+# 方式二：curl 一键安装
+curl -fsSL https://raw.githubusercontent.com/Michaelooo/cc-notify/main/install.sh | bash
+
+# 方式三：本地安装
+git clone https://github.com/Michaelooo/cc-notify.git
+cd cc-notify
+./install.sh
 ```
 
 安装脚本会自动检测已安装的 AI 工具，提供交互式多选界面（装了 `fzf` 或 `gum` 体验更好）。
@@ -226,7 +226,9 @@ CC_NOTIFY_DEBUG=1 ~/.cc-notify/bin/smart-notify.sh "测试" "调试" "normal"
 
 ```
 cc-notify/
-├── install.sh                  # 一键安装入口
+├── install.sh                  # 一键安装入口（版本号读 package.json）
+├── bin/cc-notify.sh            # npm 全局安装入口，转发到 install.sh
+├── package.json                # npm 分发与发版配置（Trusted Publishing）
 ├── lib/
 │   ├── common.sh               # 公共函数
 │   ├── detect.sh               # 工具检测
